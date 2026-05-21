@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decimal Compare</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-color: #1e293b;
+            --crypto-green: #10b981;
+            --crypto-red: #ef4444;
+            --bitcoin-gold: #f59e0b;
+            --text-main: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 450px;
+            height: 80vh;
+            max-height: 700px;
+            background: linear-gradient(180deg, #1e1e38 0%, #09090e 100%);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 4px solid #334155;
+        }
+
+        /* UI Top Bar */
+        #top-bar {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 2px solid #334155;
+            z-index: 10;
+        }
+
+        .score-box {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--bitcoin-gold);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #level-indicator {
+            background: #334155;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Track View */
+        #track-view {
+            flex: 1;
+            position: relative;
+            perspective: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-bottom: 40px;
+        }
+
+        /* Gates Layout */
+        #gates-container {
+            position: absolute;
+            top: 60px; 
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+            transform: rotateX(15deg);
+        }
+
+        .gate {
+            flex: 1;
+            margin: 0 5px;
+            padding: 20px 5px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 0px rgba(0,0,0,0.2);
+            border: 3px solid rgba(255,255,255,0.2);
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        /* Monospace alignment track */
+        .decimal-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.6rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 5px;
+            white-space: pre; 
+        }
+
+        .gray-zero {
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        .gate-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+
+        /* Player Character */
+        #player {
+            width: 70px;
+            height: 70px;
+            background: radial-gradient(circle, #fbbf24 0%, #d97706 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6), inset 0 -4px 0 rgba(0,0,0,0.3);
+            font-weight: bold;
+            color: #fff;
+            position: absolute;
+            z-index: 5;
+        }
+
+        /* Feedback Layer */
+        #feedback {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 20;
+            background: rgba(15, 23, 42, 0.95);
+            border: 3px solid #475569;
+            padding: 20px;
+            border-radius: 16px;
+            width: 88%;
+            box-sizing: border-box;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+            display: none; 
+        }
+
+        /* Visual Breakdown Grid */
+        .feedback-grid {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.8rem;
+            line-height: 1.3;
+            background: #090d16;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px auto;
+            display: inline-block;
+            text-align: left;
+            border: 1px solid #334155;
+            letter-spacing: 2px;
+        }
+
+        .highlight-col {
+            background-color: #eab308;
+            color: #000;
+            font-weight: 900;
+            border-radius: 3px;
+            padding: 0 2px;
+            box-shadow: 0 0 8px #eab308;
+        }
+
+        /* Screen States */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 30px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .hidden { display: none !important; }
+
+        button {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(217, 119, 6, 0.4);
+            margin-top: 20px;
+            z-index: 110;
+        }
+
+        button:hover { transform: scale(1.05); }
+
+        .btn-feedback {
+            margin-top: 15px;
+            padding: 10px 25px;
+            font-size: 1rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            box-shadow: 0 4px 10px rgba(29, 78, 216, 0.3);
+            pointer-events: auto; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="top-bar">
+            <div class="score-box">Wallet: ₿<span id="btc-balance">5.000</span></div>
+            <div id="level-indicator">Gate 1</div>
+        </div>
+
+        <div id="track-view">
+            <div id="gates-container">
+                <div id="left-gate" class="gate">
+                    <span id="left-val" class="decimal-display">0.400</span>
+                    <span class="gate-label">Lean Left ←</span>
+                </div>
+                <div id="right-gate" class="gate">
+                    <span id="right-val" class="decimal-display">0.125</span>
+                    <span class="gate-label">Lean Right →</span>
+                </div>
+            </div>
+
+            <div id="feedback"></div>
+
+            <div id="player">₿</div>
+        </div>
+
+        <div id="start-screen" class="screen">
+            <h1 style="color: var(--bitcoin-gold); margin-bottom: 5px; font-size: 2.3rem;">DECIMAL DASH</h1>
+            <p style="opacity: 0.8; margin-bottom: 15px;">How good are you at comparing decimals?</p>
+            <p style="font-size: 0.95rem; color: #fbbf24; background: rgba(0,0,0,0.4); padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; line-height: 1.4;">
+                🎮 <b>Controls:</b><br>
+                HOLD <b>← / → Arrows</b> to lean left or right.<br>
+                HOLD <b>↑ Arrow Key</b> to speed up!<br>
+               
+            </p>
+            <button onclick="startGame()">START</button>
+        </div>
+
+        <div id="game-over-screen" class="screen hidden">
+            <h2 style="color: var(--crypto-red)">Wallet Bankrupt!</h2>
+            <p style="font-size: 1.1rem;">You ran out of Bitcoin. Highest Level reached:</p>
+            <h1 style="color: var(--bitcoin-gold); font-size: 3rem; margin: 10px 0;">Gate <span id="final-level">1</span></h1>
+            <button onclick="startGame()">TRY AGAIN</button>
+        </div>
+    </div>
+
+<script>
+    let balance = 5.000;
+    let currentLevel = 1;
+    let currentCorrectAnswer = ''; 
+    let isTransitioning = false; 
+    let activeTip = "";
+    let activeLeftNum = 0;
+    let activeRightNum = 0;
+
+    // Physics Engine
+    let playerX = 0;             
+    let playerY = 460;           
+    const startYPosition = 460;  
+    const targetYLine = 120;     
+    
+    let baseForwardSpeed = 0.7;   
+    const steeringSpeed = 2.0;   
+    const snapBackSpeed = 1.2;   
+    const maxDistanceX = 110;    
+    let keysPressed = {};
+
+    function startGame() {
+        balance = 5.000; 
+        currentLevel = 1;
+        isTransitioning = false;
+        playerX = 0;
+        playerY = startYPosition;
+        keysPressed = {};
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-over-screen').classList.add('hidden');
+        document.getElementById('feedback').style.display = 'none';
+        loadLevel();
+    }
+
+    function generateDecimalChallenge(level) {
+        let left, right, tip;
+        
+        if (level <= 3) {
+            const choices = [
+                { l: 0.4, r: 0.125, t: "Look at the tenths column! 4 tenths beats 1 tenth." },
+                { l: 0.3, r: 0.09, t: "3 tenths beats 0 tenths!" },
+                { l: 0.8, r: 0.75, t: "8 tenths is bigger than 7 tenths, layout lengths don't matter!" }
+            ];
+            let item = choices[Math.floor(Math.random() * choices.length)];
+            left = item.l; right = item.r; tip = item.t;
+        } else if (level <= 7) {
+            let whole = Math.floor(Math.random() * 8) + 1; 
+            let pick = Math.random() > 0.5;
+            left = pick ? whole + 0.5 : whole + 0.3;
+            right = pick ? whole + 0.199 : whole + 0.285;
+            if (left < right) { let temp = left; left = right; right = temp; }
+            tip = `Both have a whole unit of ${whole}. Check the tenths column next!`;
+        } else {
+            let tensWhole = Math.floor(Math.random() * 80) + 10; 
+            let tenthsBase = Math.floor(Math.random() * 7) + 1;  
+
+            let pickStyle = Math.random() > 0.5;
+            if (pickStyle) {
+                left = tensWhole + (tenthsBase / 10) + 0.062; 
+                right = tensWhole + (tenthsBase / 10) + 0.056; 
+                tip = `Super close! Wholes and tenths match. But 6 hundredths beats 5 hundredths!`;
+            } else {
+                left = tensWhole + (tenthsBase / 10);          
+                right = tensWhole + ((tenthsBase - 1) / 10) + 0.091; 
+                tip = `Don't get tricked! ${tenthsBase} tenths beats ${tenthsBase-1} tenths!`;
+            }
+        }
+        return { left, right, tip };
+    }
+
+    function getRawPaddedStrings(num1, num2) {
+        let str1 = num1.toFixed(3);
+        let str2 = num2.toFixed(3);
+        
+        let len1 = str1.split('.')[0].length;
+        let len2 = str2.split('.')[0].length;
+        
+        if(len1 === 1 && len2 === 2) str1 = " " + str1;
+        if(len2 === 1 && len1 === 2) str2 = " " + str2;
+        
+        return { s1: str1, s2: str2 };
+    }
+
+    function generateComparisonHTML(biggerNum, smallerNum) {
+        let strings = getRawPaddedStrings(biggerNum, smallerNum);
+        let s1 = strings.s1; 
+        let s2 = strings.s2; 
+
+        let diffIdx = 0;
+        for (let i = 0; i < s1.length; i++) {
+            if (s1[i] !== s2[i]) {
+                diffIdx = i;
+                break;
+            }
+        }
+
+        function highlightString(str, idx) {
+            let html = "";
+            for (let i = 0; i < str.length; i++) {
+                if (i === idx) {
+                    html += `<span class="highlight-col">${str[i]}</span>`;
+                } else {
+                    html += str[i];
+                }
+            }
+            return html;
+        }
+
+        return `
+            <div class="feedback-grid">
+                🟩 ${highlightString(s1, diffIdx)} (Bigger)<br>
+                🟥 ${highlightString(s2, diffIdx)} (Smaller)
+            </div>
+        `;
+    }
+
+    function formatDecimalToHTML(num) {
+        let targetString = num.toFixed(3);
+        let standardStr = num.toString();
+        let dotsIndex = standardStr.indexOf('.');
+        let naturalDecimals = dotsIndex === -1 ? 0 : standardStr.length - dotsIndex - 1;
+
+        let paddingZerosCount = 3 - Math.max(naturalDecimals, 1);
+        let baseText = targetString.substring(0, targetString.length - paddingZerosCount);
+        
+        let outHtml = baseText;
+        for(let i=0; i<paddingZerosCount; i++) {
+            outHtml += `<span class="gray-zero">0</span>`;
+        }
+
+        let wholesLength = baseText.split('.')[0].length;
+        if (wholesLength === 1) {
+            outHtml = " " + outHtml; 
+        }
+        return outHtml;
+    }
+
+    function loadLevel() {
+        isTransitioning = false;
+        playerX = 0;
+        playerY = startYPosition;
+        
+        baseForwardSpeed = 0.7 + (Math.min(currentLevel, 25) * 0.04);
+
+        let data = generateDecimalChallenge(currentLevel);
+        activeTip = data.tip;
+        activeLeftNum = data.left;
+        activeRightNum = data.right;
+        
+        let swap = Math.random() > 0.5;
+        let displayLeft = swap ? data.right : data.left;
+        let displayRight = swap ? data.left : data.right;
+
+        currentCorrectAnswer = data.left > data.right ? 'left' : 'right';
+        if(swap) {
+            currentCorrectAnswer = currentCorrectAnswer === 'left' ? 'right' : 'left';
+        }
+
+        document.getElementById('left-val').innerHTML = formatDecimalToHTML(displayLeft);
+        document.getElementById('right-val').innerHTML = formatDecimalToHTML(displayRight);
+
+        document.getElementById('left-gate').style.background = "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)";
+        document.getElementById('right-gate').style.background = "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)";
+        
+        updateUI();
+    }
+
+    function updatePhysics() {
+        const isPlaying = document.getElementById('start-screen').classList.contains('hidden') && 
+                          document.getElementById('game-over-screen').classList.contains('hidden');
+
+        if (isPlaying && !isTransitioning) {
+            let dynamicSpeed = baseForwardSpeed;
+            if (keysPressed['ArrowUp']) {
+                dynamicSpeed *= 2.8; 
+            }
+            playerY -= dynamicSpeed;
+
+            if (keysPressed['ArrowLeft']) {
+                playerX -= steeringSpeed;
+            } else if (keysPressed['ArrowRight']) {
+                playerX += steeringSpeed;
+            } else {
+                if (playerX > 0) playerX = Math.max(0, playerX - snapBackSpeed);
+                if (playerX < 0) playerX = Math.min(0, playerX + snapBackSpeed);
+            }
+
+            if (playerX <= -maxDistanceX) playerX = -maxDistanceX;
+            if (playerX >= maxDistanceX) playerX = maxDistanceX;
+
+            if (playerY <= targetYLine) {
+                if (playerX < 0) {
+                    chooseGate('left');
+                } else if (playerX > 0) {
+                    chooseGate('right');
+                } else {
+                    chooseGate(Math.random() > 0.5 ? 'left' : 'right');
+                }
+            }
+        }
+
+        const pEl = document.getElementById('player');
+        pEl.style.left = `calc(50% - 35px + ${playerX}px)`;
+        pEl.style.top = `${playerY}px`;
+
+        requestAnimationFrame(updatePhysics);
+    }
+
+    function chooseGate(choice) {
+        isTransitioning = true;
+        keysPressed = {}; 
+
+        let feedbackEl = document.getElementById('feedback');
+        let bigger = Math.max(activeLeftNum, activeRightNum);
+        let smaller = Math.min(activeLeftNum, activeRightNum);
+
+        if (choice === currentCorrectAnswer) {
+            let reward = bigger * 0.1;
+            balance += reward;
+            
+            // Visual confirmation on the gate
+            document.getElementById(choice + '-gate').style.background = "linear-gradient(135deg, #10b981 0%, #047857 100%)";
+            currentLevel++; 
+            
+            // NO MODAL DIALOG. Flash briefly, then load next level seamlessly.
+            setTimeout(() => {
+                if (balance > 0) {
+                    loadLevel();
+                } else {
+                    endGame();
+                }
+            }, 300);
+        } else {
+            let penalty = smaller * 0.1;
+            balance -= penalty;
+            
+            // Show correction grid overlay
+            feedbackEl.innerHTML = `
+                <span style="color: var(--crypto-red); font-size: 1.4rem;">❌ Correction! -₿${penalty.toFixed(3)}</span><br>
+                ${generateComparisonHTML(bigger, smaller)}
+                <div style="font-size:0.85rem; color:#cbd5e1; font-weight:normal; margin-top:8px; line-height:1.4; max-width:280px; margin-left:auto; margin-right:auto;">${activeTip}</div>
+                <button class="btn-feedback" onclick="dismissFeedback()">CONTINUE RUN (Space)</button>
+            `;
+            document.getElementById(choice + '-gate').style.background = "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)";
+            currentLevel++;
+            
+            feedbackEl.style.display = 'block';
+        }
+    }
+
+    function dismissFeedback() {
+        if (!isTransitioning) return;
+        
+        document.getElementById('feedback').style.display = 'none';
+        
+        if (balance > 0) {
+            loadLevel();
+        } else {
+            endGame();
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('btc-balance').innerText = balance.toFixed(3);
+        document.getElementById('level-indicator').innerText = `Gate ${currentLevel}`;
+    }
+
+    function endGame() {
+        document.getElementById('game-over-screen').classList.remove('hidden');
+        document.getElementById('final-level').innerText = currentLevel;
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.code === 'Space') {
+            let feedbackEl = document.getElementById('feedback');
+            if (feedbackEl.style.display === 'block') {
+                e.preventDefault(); 
+                dismissFeedback();
+                return;
+            }
+        }
+
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+            keysPressed[e.key] = true;
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+            keysPressed[e.key] = false;
+        }
+    });
+
+    requestAnimationFrame(updatePhysics);
+</script>
+</body>
+</html>
